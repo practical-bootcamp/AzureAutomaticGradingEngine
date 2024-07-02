@@ -4,40 +4,41 @@ using System.Globalization;
 using System.Threading.Tasks;
 using AzureAutomaticGradingEngineFunctionApp.Helper;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Logging;
 
 namespace AzureAutomaticGradingEngineFunctionApp
 {
     public static partial class ScheduleGraderFunction
     {
-        [FunctionName(nameof(DailyGrader))]
+        [Function(nameof(DailyGrader))]
         public static async Task DailyGrader(
             [TimerTrigger("0 0 0 * * *")] TimerInfo myTimer,
-            [DurableClient] IDurableOrchestrationClient starter,
+            [DurableClient] DurableTaskClient client,        
             ILogger log)
         {
             if (myTimer.IsPastDue)
             {
                 log.LogInformation("Timer is running late!");
             }
-            string instanceId = await starter.StartNewAsync(nameof(DailyGraderOrchestrationFunction), null, true);
+            string instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(DailyGraderOrchestrationFunction));
             log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
         }
 
-        [FunctionName(nameof(DailyGraderOrchestrationFunction))]
+        [Function(nameof(DailyGraderOrchestrationFunction))]
         public static async Task DailyGraderOrchestrationFunction(
-            [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var assignments = await context.CallActivityAsync<List<AssignmentPoco>>(nameof(GetAssignmentList), true);
             await AssignmentTasks(context, nameof(SaveTodayMarkJson), assignments);
             Console.WriteLine("Completed!");
         }
 
-        [FunctionName(nameof(SaveTodayMarkJson))]
+        [Function(nameof(SaveTodayMarkJson))]
         public static async Task SaveTodayMarkJson([ActivityTrigger] AssignmentPoco assignment,
-            ExecutionContext executionContext,
+            FunctionContext executionContext,
             ILogger log)
         {
             var todayMarks = await GradeReportFunction.CalculateMarks(log, executionContext, assignment.Name, true);

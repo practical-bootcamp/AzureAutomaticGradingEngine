@@ -1,12 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
+﻿using System.Globalization;
+
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+
 using Azure;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
-using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -16,7 +14,7 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
 {
     class CloudStorage
     {
-        public static CloudStorageAccount GetCloudStorageAccount(ExecutionContext executionContext)
+        public static CloudStorageAccount GetCloudStorageAccount(FunctionContext executionContext)
         {
             var config = new Config(executionContext);
             return CloudStorageAccount.Parse(config.GetConfig(Config.Key.StorageAccountConnectionString));       
@@ -81,7 +79,7 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
             await blob.UploadFromStreamAsync(ms);
         }
 
-        public static async Task SaveJsonReport(ExecutionContext executionContext, string blobName, Dictionary<string, MarkDetails> calculateMarks)
+        public static async Task SaveJsonReport(FunctionContext executionContext, string blobName, Dictionary<string, MarkDetails> calculateMarks)
         {
             var blob = GetCloudBlockBlobInReportContainer(executionContext, blobName);
             blob.Properties.ContentType = "application/json";
@@ -93,7 +91,7 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
             await blob.UploadFromStreamAsync(ms);
         }
 
-        public static async Task SaveExcelReport(ExecutionContext executionContext, string blobName, Stream excelMemoryStream)
+        public static async Task SaveExcelReport(FunctionContext executionContext, string blobName, Stream excelMemoryStream)
         {
             var blob = GetCloudBlockBlobInReportContainer(executionContext, blobName);
             blob.Properties.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -101,14 +99,14 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
             await blob.UploadFromStreamAsync(excelMemoryStream);
         }
 
-        private static CloudBlockBlob GetCloudBlockBlobInReportContainer(ExecutionContext executionContext, string blobName)
+        private static CloudBlockBlob GetCloudBlockBlobInReportContainer(FunctionContext executionContext, string blobName)
         {
             var container = GetCloudBlobContainer(executionContext, "report");
             var blob = container.GetBlockBlobReference(blobName);
             return blob;
         }
 
-        public static CloudBlobContainer GetCloudBlobContainer(ExecutionContext executionContext, string containerName)
+        public static CloudBlobContainer GetCloudBlobContainer(FunctionContext executionContext, string containerName)
         {
             var storageAccount = CloudStorage.GetCloudStorageAccount(executionContext);
             var blobClient = storageAccount.CreateCloudBlobClient();

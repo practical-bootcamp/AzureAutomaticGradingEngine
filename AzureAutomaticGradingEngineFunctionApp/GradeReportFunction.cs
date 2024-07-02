@@ -1,35 +1,35 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Xml;
 using AzureAutomaticGradingEngineFunctionApp.Helper;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace AzureAutomaticGradingEngineFunctionApp
 {
-    public static class GradeReportFunction
+    public class GradeReportFunction
     {
-        [FunctionName(nameof(GradeReportFunction))]
-        public static async Task<IActionResult> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req, ILogger log, ExecutionContext context)
+        private readonly ILogger _logger;
+        public GradeReportFunction(ILoggerFactory loggerFactory)
         {
-            log.LogInformation($@"C# HTTP trigger {nameof(GradeReportFunction)} function processed a request.");
+            _logger = loggerFactory.CreateLogger<GradeReportFunction>();
+        }
 
-            string assignment = req.Query["assignment"];
+        [Function(nameof(GradeReportFunction))]
+        public async Task<IActionResult> Run(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req, FunctionContext context)
+        {
+            _logger.LogInformation($@"C# HTTP trigger {nameof(GradeReportFunction)} function processed a request.");
+
+            string assignment = req.Query["assignment"]!;
             bool isJson = req.Query.ContainsKey("json");
             bool isToday = req.Query.ContainsKey("today");
 
-            var accumulateMarks = await CalculateMarks(log, context, assignment, isToday);
+            var accumulateMarks = await CalculateMarks(_logger, context, assignment, isToday);
 
             if (isJson)
             {
@@ -57,7 +57,7 @@ namespace AzureAutomaticGradingEngineFunctionApp
             return stream;
         }
 
-        public static async Task<Dictionary<string, MarkDetails>> CalculateMarks(ILogger log, ExecutionContext context, string assignment, bool isToday)
+        public async static Task<Dictionary<string, MarkDetails>> CalculateMarks(ILogger log, FunctionContext context, string assignment, bool isToday)
         {
             var storageAccount = CloudStorage.GetCloudStorageAccount(context);
             var blobClient = storageAccount.CreateCloudBlobClient();
@@ -198,7 +198,7 @@ namespace AzureAutomaticGradingEngineFunctionApp
 
         }
 
-        private static Dictionary<string, int> GetTestResult(CloudBlobContainer cloudBlobContainer, IListBlobItem item)
+        private Dictionary<string, int> GetTestResult(CloudBlobContainer cloudBlobContainer, IListBlobItem item)
         {
             var xmlDoc = LoadTestResultToXmlDocument(cloudBlobContainer, item);
             return ParseNUnitTestResult(xmlDoc);

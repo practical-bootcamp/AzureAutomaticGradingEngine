@@ -7,21 +7,19 @@ using AzureAutomaticGradingEngineFunctionApp.Model;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace AzureAutomaticGradingEngineFunctionApp;
 
 public static class StudentRegistrationFunction
 {
-    [FunctionName(nameof(StudentRegistrationFunction))]
-    // ReSharper disable once UnusedMember.Global
+    [Function(nameof(StudentRegistrationFunction))]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]
         HttpRequest req,
-        ILogger log, ExecutionContext context)
+        ILogger log, FunctionContext context)
     {
         log.LogInformation($"Start {nameof(StudentRegistrationFunction)}");
 

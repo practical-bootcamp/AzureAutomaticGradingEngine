@@ -19,7 +19,14 @@ You can read more about this project at [Microsoft Educator Developer TechCommun
 
 ## CDK-TF Deployment 
 You have to refer [Object Oriented Your Azure Infrastructure with Cloud Development Kit for Terraform (CDKTF)](https://techcommunity.microsoft.com/t5/educator-developer-blog/object-oriented-your-azure-infrastructure-with-cloud-development/ba-p/3474715) and setup your CDK-TF.
+
+Login Azure CLI
 ```
+az login --use-device-code 
+```
+Deployment
+```
+npm install -g cdktf-cli
 npm i
 cdktf deploy --auto-approve
 ```
