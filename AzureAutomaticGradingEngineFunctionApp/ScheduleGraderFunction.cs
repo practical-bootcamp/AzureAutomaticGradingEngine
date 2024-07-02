@@ -218,7 +218,7 @@ namespace AzureAutomaticGradingEngineFunctionApp
         {
             var array = (
                 from key in nvc.AllKeys
-                from value in nvc.GetValues(key)
+                from value in nvc.GetValues(key)!
                 select $"{HttpUtility.UrlEncode(key)}={HttpUtility.UrlEncode(value)}"
             ).ToArray();
             return "?" + string.Join("&", array);

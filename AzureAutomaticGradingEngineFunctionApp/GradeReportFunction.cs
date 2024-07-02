@@ -73,8 +73,8 @@ namespace AzureAutomaticGradingEngineFunctionApp
                 .Select(c => new
                 {
                     c.Email,
-                    TestResult = ParseNUnitTestResult(c.XmlDoc),
-                    CreateTime = GetTestTime(c.XmlDoc)
+                    TestResult = ParseNUnitTestResult(c.XmlDoc!),
+                    CreateTime = GetTestTime(c.XmlDoc!)
                 }).Select(c => new
                 {
                     c.Email,
@@ -201,7 +201,7 @@ namespace AzureAutomaticGradingEngineFunctionApp
         private Dictionary<string, int> GetTestResult(CloudBlobContainer cloudBlobContainer, IListBlobItem item)
         {
             var xmlDoc = LoadTestResultToXmlDocument(cloudBlobContainer, item);
-            return ParseNUnitTestResult(xmlDoc);
+            return ParseNUnitTestResult(xmlDoc!);
         }
 
         public static Dictionary<string, int> ParseNUnitTestResult(string rawXml)
@@ -215,9 +215,9 @@ namespace AzureAutomaticGradingEngineFunctionApp
         {
             var testCases = xmlDoc.SelectNodes("/test-run/test-suite/test-suite/test-suite/test-case");
             var result = new Dictionary<string, int>();
-            foreach (XmlNode node in testCases)
+            foreach (XmlNode node in testCases!)
             {
-                result.Add(node.Attributes?["fullname"].Value, node.Attributes?["result"].Value == "Passed" ? 1 : 0);
+                result.Add(node?.Attributes?["fullname"]?.Value!, node?.Attributes?["result"]?.Value == "Passed" ? 1 : 0);
             }
 
             return result;
@@ -226,13 +226,13 @@ namespace AzureAutomaticGradingEngineFunctionApp
         private static DateTime GetTestTime(XmlDocument xmlDoc)
         {
             //ISO 8601 pattern "2021-10-02T10:01:57.1589935Z"
-            var testStartTime = DateTime.Parse(xmlDoc.SelectSingleNode("/test-run")?.Attributes?["start-time"].Value);
+            var testStartTime = DateTime.Parse(xmlDoc.SelectSingleNode("/test-run")?.Attributes?["start-time"]?.Value ?? string.Empty);
             //Ignore Second.
             testStartTime = testStartTime.AddSeconds(-testStartTime.Second);
             return testStartTime;
         }
 
-        private static XmlDocument LoadTestResultToXmlDocument(CloudBlobContainer cloudBlobContainer, IListBlobItem item)
+        private static XmlDocument? LoadTestResultToXmlDocument(CloudBlobContainer cloudBlobContainer, IListBlobItem item)
         {
             var blobName = item.Uri.ToString()[(cloudBlobContainer.Uri.ToString().Length + 1)..];
             var blob = cloudBlobContainer.GetBlockBlobReference(blobName);

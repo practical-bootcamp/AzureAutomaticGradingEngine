@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.Azure.Functions.Worker;
+﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 
 namespace AzureAutomaticGradingEngineFunctionApp.Helper
@@ -31,8 +30,8 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
                 .AddEnvironmentVariables()
                 .Build();
 
-            var name = Enum.GetName(typeof(Key), key);
-            return config[name];
+            var name = Enum.GetName(typeof(Key), key)!;
+            return config[name]!;
         }
     }
 }

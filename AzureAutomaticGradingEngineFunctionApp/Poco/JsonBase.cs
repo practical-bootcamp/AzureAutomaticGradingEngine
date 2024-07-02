@@ -20,7 +20,7 @@ public abstract class JsonBase<T> where T : class
         return Encoding.Default.GetString(ms.ToArray());
     }
 
-    public static T FromJson(string content, ILogger logger)
+    public static T? FromJson(string content, ILogger logger)
     {
         try
         {

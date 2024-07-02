@@ -1,20 +1,20 @@
 ﻿using AzureAutomaticGradingEngineFunctionApp.Helper;
 using AzureAutomaticGradingEngineFunctionApp.Model;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace AzureAutomaticGradingEngineFunctionApp.Dao;
-
-internal class AssignmentDao : Dao<Assignment>
+namespace AzureAutomaticGradingEngineFunctionApp.Dao
 {
-    public AssignmentDao(Config config, ILogger logger) : base(config, logger)
+    internal class AssignmentDao : Dao<Assignment>
     {
-  
-    }
-    public List<Assignment> GetAssignments()
-    {
-        var oDataQueryEntities = TableClient.Query<Assignment>();
-        return oDataQueryEntities.ToList();
+        public AssignmentDao(Config config, ILogger logger) : base(config, logger)
+        {
+        }
+
+
+        public List<Assignment> GetAssignments()
+        {
+            var oDataQueryEntities = TableClient.Query<Assignment>();
+            return oDataQueryEntities.ToList();
+        }
     }
 }

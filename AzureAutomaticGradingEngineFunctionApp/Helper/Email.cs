@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Net.Mail;
+﻿using System.Net.Mail;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
 using Microsoft.Extensions.Logging;
 
@@ -15,7 +13,6 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
 
         public Email(Config config, ILogger log)
         {
-
             _log = log;
             //https://stackoverflow.com/questions/18503333/the-smtp-server-requires-a-secure-connection-or-the-client-was-not-authenticated
 
@@ -31,11 +28,13 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
                 return;
             }
 
-            _client = new SmtpClient(smtp, 587);
-            _client.EnableSsl = true;
-            _client.UseDefaultCredentials = false;
-            _client.DeliveryMethod = SmtpDeliveryMethod.Network;
-            _client.Credentials = new System.Net.NetworkCredential(loginName, password);
+            _client = new SmtpClient(smtp, 587)
+            {
+                EnableSsl = true,
+                UseDefaultCredentials = false,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Credentials = new System.Net.NetworkCredential(loginName, password)
+            };
         }
 
         public void Send(EmailMessage email, Attachment[] attachments)

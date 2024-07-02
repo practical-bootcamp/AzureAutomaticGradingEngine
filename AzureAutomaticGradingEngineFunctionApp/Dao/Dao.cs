@@ -59,7 +59,7 @@ internal abstract class Dao<T> where T : class, ITableEntity, new()
         Logger.LogInformation("Deleted " + entity);
     }
 
-    public T Get(string partitionKey)
+    public T? Get(string partitionKey)
     {
         try
         {
@@ -72,7 +72,7 @@ internal abstract class Dao<T> where T : class, ITableEntity, new()
         }
     }
 
-    public T Get(string partitionKey, string rowKey)
+    public T? Get(string partitionKey, string rowKey)
     {
         try
         {

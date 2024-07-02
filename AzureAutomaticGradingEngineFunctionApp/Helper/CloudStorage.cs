@@ -22,7 +22,7 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
         public static async Task<List<IListBlobItem>> ListBlobsFlatListing(CloudBlobContainer cloudBlobContainer, string prefix, ILogger log, bool isToday)
         {
             var blobItems = new List<IListBlobItem>();
-            BlobContinuationToken blobContinuationToken = null;
+            BlobContinuationToken? blobContinuationToken = null;
 
             var now = DateTime.Now;
             var nowPath = $@"/{now.Year}/{now.Month}/{now.Day}/";
