@@ -1,34 +1,32 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using AzureAutomaticGradingEngineFunctionApp.Dao;
 using AzureAutomaticGradingEngineFunctionApp.Helper;
 
 namespace AzureAutomaticGradingEngineFunctionApp
 {
-    public static class GetApiKeyFunction
+    public class GetApiKeyFunction
     {
-        [FunctionName(nameof(GetApiKeyFunction))]
-        public static IActionResult Run(
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req, ExecutionContext context,
-            ILogger log)
+        private readonly ILogger _logger;
+        public GetApiKeyFunction(ILoggerFactory loggerFactory)
         {
-            log.LogInformation("GetApiKeyFunction HTTP trigger function processed a request.");
+            _logger = loggerFactory.CreateLogger<GetApiKeyFunction>();
+        }
+
+        [Function(nameof(GetApiKeyFunction))]
+        public IActionResult Run(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req, FunctionContext context)
+        {
+            _logger.LogInformation("GetApiKeyFunction HTTP trigger function processed a request.");
 
             var config = new Config(context);
-            var dao = new LabCredentialDao(config, log);
-            string course = req.Query["course"];
-            string email = req.Query["email"];
+            var dao = new LabCredentialDao(config, _logger);
+            string course = req.Query["course"]!;
+            string email = req.Query["email"]!;
             var credential = dao.Get(course, email);
-            var json = JsonConvert.SerializeObject(credential);
             return new JsonResult(credential);
-
         }
     }
 }

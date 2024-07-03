@@ -16,7 +16,7 @@ internal static class Azure
     {
         var defaultCredential = new DefaultAzureCredential();
         var defaultToken = (await defaultCredential
-            .GetTokenAsync(new TokenRequestContext(new[] {"https://management.azure.com/.default"}))).Token;
+            .GetTokenAsync(new TokenRequestContext(["https://management.azure.com/.default"]))).Token;
         var defaultTokenCredentials = new TokenCredentials(defaultToken);
         var azureCredentials = new AzureCredentials(defaultTokenCredentials, defaultTokenCredentials, null,
             AzureEnvironment.AzureGlobalCloud);

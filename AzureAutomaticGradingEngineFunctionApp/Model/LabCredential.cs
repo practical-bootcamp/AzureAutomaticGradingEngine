@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using Azure;
+﻿using Azure;
 using Microsoft.WindowsAzure.Storage.Table;
 using ITableEntity = Azure.Data.Tables.ITableEntity;
 
@@ -20,5 +18,5 @@ internal class LabCredential : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 
-    [IgnoreProperty] public Dictionary<string, string> Variables { get; set; }
+    [IgnoreProperty] public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>();
 }

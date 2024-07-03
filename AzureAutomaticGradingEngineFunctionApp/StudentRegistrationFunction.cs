@@ -1,30 +1,30 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using AzureAutomaticGradingEngineFunctionApp.Dao;
+﻿using AzureAutomaticGradingEngineFunctionApp.Dao;
 using AzureAutomaticGradingEngineFunctionApp.Helper;
 using AzureAutomaticGradingEngineFunctionApp.Model;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 
 namespace AzureAutomaticGradingEngineFunctionApp;
 
-public static class StudentRegistrationFunction
+public class StudentRegistrationFunction
 {
-    [FunctionName(nameof(StudentRegistrationFunction))]
-    // ReSharper disable once UnusedMember.Global
-    public static async Task<IActionResult> Run(
+    private readonly ILogger _logger;
+    public StudentRegistrationFunction(ILoggerFactory loggerFactory)
+    {
+        _logger = loggerFactory.CreateLogger<GradeReportFunction>();
+    }
+
+    [Function(nameof(StudentRegistrationFunction))]
+    public async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = null)]
         HttpRequest req,
-        ILogger log, ExecutionContext context)
+        FunctionContext context)
     {
-        log.LogInformation($"Start {nameof(StudentRegistrationFunction)}");
-
+        _logger.LogInformation($"Start {nameof(StudentRegistrationFunction)}");
 
         if (req.Method == "GET")
         {
@@ -33,8 +33,8 @@ public static class StudentRegistrationFunction
                 return GetContentResult("Invalid Url and it should contain lab and email!");
             }
 
-            string lab = req.Query["lab"];
-            string email = req.Query["email"];
+            string lab = req.Query["lab"]!;
+            string email = req.Query["email"]!;
             var form = $@"
     <form id='form' method='post'>
         <input type='hidden' id='lab' name='lab' value='{lab}'>
@@ -51,25 +51,24 @@ public static class StudentRegistrationFunction
 
         if (req.Method == "POST")
         {
-            log.LogInformation("POST Request");
-            string lab = req.Form["lab"];
-            string email = req.Form["email"];
-            string credentialJsonString = req.Form["credentials"];
-            log.LogInformation("Student Register: " + email + " Lab:" + lab);
+            _logger.LogInformation("POST Request");
+            string? lab = req.Form["lab"];
+            string? email = req.Form["email"];
+            string? credentialJsonString = req.Form["credentials"];
+            _logger.LogInformation("Student Register: " + email + " Lab:" + lab);
             if (string.IsNullOrWhiteSpace(email) ||
                 string.IsNullOrWhiteSpace(credentialJsonString))
                 return GetContentResult("Missing Data and Registration Failed!");
             email = email.Trim().ToLower();
 
-
             var config = new Config(context);
-            var subscriptionDao = new SubscriptionDao(config, log);
-            var labCredentialDao = new LabCredentialDao(config, log);
-            var credential = AppPrincipal.FromJson(credentialJsonString, log);
+            var subscriptionDao = new SubscriptionDao(config, _logger);
+            var labCredentialDao = new LabCredentialDao(config, _logger);
+            var credential = AppPrincipal.FromJson(credentialJsonString, _logger)!;
 
             var azureCredentials = SdkContext.AzureCredentialsFactory.FromServicePrincipal(credential.appId, credential.password, credential.tenant, AzureEnvironment.AzureGlobalCloud);
             var authenticated = Microsoft.Azure.Management.Fluent.Azure.Configure().Authenticate(azureCredentials);
-            string subscriptionId = authenticated.Subscriptions.List().First<ISubscription>().SubscriptionId;
+            string subscriptionId = authenticated.Subscriptions.List().First().SubscriptionId;
 
             if (string.IsNullOrWhiteSpace(lab))
             {

@@ -2,12 +2,11 @@
 
 namespace AzureAutomaticGradingEngineFunctionApp.Poco;
 
-// ReSharper disable InconsistentNaming
 [DataContract]
 public class AppPrincipal : JsonBase<AppPrincipal>
 {
-    [DataMember] public string appId;
-    [DataMember] public string displayName;
-    [DataMember] public string password;
-    [DataMember] public string tenant;
+    [DataMember] public required string appId;
+    [DataMember] public required string displayName;
+    [DataMember] public required string password;
+    [DataMember] public required string tenant;
 }

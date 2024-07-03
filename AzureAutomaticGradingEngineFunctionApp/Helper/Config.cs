@@ -1,16 +1,15 @@
-﻿using System;
-using Microsoft.Azure.WebJobs;
+﻿using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 
 namespace AzureAutomaticGradingEngineFunctionApp.Helper
 {
     public class Config
     {
-        private readonly ExecutionContext _context;
+        private readonly FunctionContext _context;
 
-        public Config(ExecutionContext context)
+        public Config(FunctionContext context)
         {
-            this._context = context;
+            _context = context;
         }
 
         public enum Key
@@ -26,13 +25,13 @@ namespace AzureAutomaticGradingEngineFunctionApp.Helper
         public string GetConfig(Key key)
         {
             var config = new ConfigurationBuilder()
-                .SetBasePath(_context.FunctionAppDirectory)
+                // .SetBasePath(_context.)
                 .AddJsonFile("local.settings.json", optional: true, reloadOnChange: true)
                 .AddEnvironmentVariables()
                 .Build();
 
-            var name = Enum.GetName(typeof(Key), key);
-            return config[name];
+            var name = Enum.GetName(typeof(Key), key)!;
+            return config[name]!;
         }
     }
 }

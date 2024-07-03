@@ -1,70 +1,69 @@
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
+
 using System.Net.Mail;
-using System.Threading.Tasks;
 using System.Web;
 using AzureAutomaticGradingEngineFunctionApp.Helper;
 using AzureAutomaticGradingEngineFunctionApp.Model;
 using Cronos;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+
+using Microsoft.Azure.Functions.Worker;
 using AzureAutomaticGradingEngineFunctionApp.Dao;
 using AzureAutomaticGradingEngineFunctionApp.Poco;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+
+using Microsoft.Azure.Functions.Worker.Http;
 
 namespace AzureAutomaticGradingEngineFunctionApp
 {
-    public static partial class ScheduleGraderFunction
+    public partial class ScheduleGraderFunction
     {
-        [FunctionName(nameof(ScheduleGrader))]
-        public static async Task ScheduleGrader(
+        private readonly ILogger _logger;
+        public ScheduleGraderFunction(ILoggerFactory loggerFactory)
+        {
+            _logger = loggerFactory.CreateLogger<ScheduleGraderFunction>();
+        }
+
+        [Function(nameof(ScheduleGrader))]
+        public async Task ScheduleGrader(
             [TimerTrigger("0 */5 * * * *")] TimerInfo myTimer,
-            [DurableClient] IDurableOrchestrationClient starter,
-            ILogger log)
+            [DurableClient] DurableTaskClient starter)
         {
             if (myTimer.IsPastDue)
             {
-                log.LogInformation("Timer is running late!");
+                _logger.LogInformation("Timer is running late!");
             }
-            string instanceId = await starter.StartNewAsync(nameof(GraderOrchestrationFunction), null, false);
-            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+            string instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(GraderOrchestrationFunction));
+            _logger.LogInformation($"Started orchestration with ID = '{instanceId}'.");
         }
 
-        [FunctionName(nameof(ManualRunGraderOrchestrationFunction))]
-        public static async Task<IActionResult> ManualRunGraderOrchestrationFunction(
-#pragma warning disable IDE0060 // Remove unused parameter
-            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequest req, ILogger log, ExecutionContext context,
-#pragma warning restore IDE0060 // Remove unused parameter
-            [DurableClient] IDurableOrchestrationClient starter
+        [Function(nameof(ManualRunGraderOrchestrationFunction))]
+        public async Task<HttpResponseData> ManualRunGraderOrchestrationFunction(
+            [HttpTrigger(AuthorizationLevel.Function, "get", Route = null)] HttpRequestData req, FunctionContext context,
+            [DurableClient] DurableTaskClient starter
         )
         {
-            var instanceId = await starter.StartNewAsync(nameof(GraderOrchestrationFunction), null, true);
-            log.LogInformation($"Started orchestration with ID = '{instanceId}'.");
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(GraderOrchestrationFunction));
+            _logger.LogInformation($"Started orchestration with ID = '{instanceId}'.");
 
             return starter.CreateCheckStatusResponse(req, instanceId);
         }
 
-        [FunctionName(nameof(GraderOrchestrationFunction))]
-        public static async Task GraderOrchestrationFunction(
-            [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
+        [Function(nameof(GraderOrchestrationFunction))]
+        public async Task GraderOrchestrationFunction(
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             bool isManual = context.GetInput<bool>();
             var assignments = await context.CallActivityAsync<List<AssignmentPoco>>(nameof(GetAssignmentList), isManual);
 
-            log.LogInformation($"context {context.InstanceId} {context.IsReplaying} Assignment Count = '{assignments.Count}' ignoreCronExpression:{isManual} ");
+            _logger.LogInformation($"context {context.InstanceId} {context.IsReplaying} Assignment Count = '{assignments.Count}' ignoreCronExpression:{isManual} ");
             var classJobs = new List<ClassGradingJob>();
             for (var i = 0; i < assignments.Count; i++)
             {
-                classJobs.Add(ToClassGradingJob(assignments[i], log));
+                classJobs.Add(ToClassGradingJob(assignments[i], _logger));
             }
 
             foreach (var classGradingJob in classJobs)
@@ -88,30 +87,30 @@ namespace AzureAutomaticGradingEngineFunctionApp
 
             await AssignmentTasks(context, nameof(SaveAccumulatedMarkJson), assignments);
 
-            log.LogInformation("Completed!");
+            _logger.LogInformation("Completed!");
         }
 
 
 
-        public static async Task AssignmentTasks(IDurableOrchestrationContext context, string activity, List<AssignmentPoco> assignments)
+        public static async Task AssignmentTasks(TaskOrchestrationContext context, string activity, List<AssignmentPoco> assignments)
         {
-            var retryOptions = new RetryOptions(
+            RetryPolicy retryPolicy = new RetryPolicy(
                 firstRetryInterval: TimeSpan.FromSeconds(5),
                 maxNumberOfAttempts: 1
                 );
+            var retryOptions = TaskOptions.FromRetryPolicy(retryPolicy);
+
             var task = new Task[assignments.Count];
             for (var i = 0; i < assignments.Count; i++)
             {
-                task[i] = context.CallActivityWithRetryAsync(activity, retryOptions, assignments[i]);
+                task[i] = context.CallActivityAsync(activity, assignments[i], retryOptions);
             }
             await Task.WhenAll(task);
         }
 
 
-        [FunctionName(nameof(GetAssignmentList))]
-#pragma warning disable IDE0060 // Remove unused parameter
-        public static List<AssignmentPoco> GetAssignmentList([ActivityTrigger] bool ignoreCronExpression, ExecutionContext executionContext, ILogger log
-#pragma warning restore IDE0060 // Remove unused parameter
+        [Function(nameof(GetAssignmentList))]
+        public List<AssignmentPoco> GetAssignmentList([ActivityTrigger] bool ignoreCronExpression, FunctionContext executionContext
     )
         {
             var storageAccount = CloudStorage.GetCloudStorageAccount(executionContext);
@@ -119,8 +118,8 @@ namespace AzureAutomaticGradingEngineFunctionApp
             var cloudTableClient = storageAccount.CreateCloudTableClient();
             var config = new Config(executionContext);
 
-            var assignmentDao = new AssignmentDao(config, log);
-            var labCredentialDao = new LabCredentialDao(config, log);
+            var assignmentDao = new AssignmentDao(config, _logger);
+            var labCredentialDao = new LabCredentialDao(config, _logger);
             var assignments = assignmentDao.GetAssignments();
 
             var now = DateTime.UtcNow;
@@ -132,12 +131,12 @@ namespace AzureAutomaticGradingEngineFunctionApp
                     var nextOccurrence = expression.GetNextOccurrence(now.AddSeconds(-10));
                     var diff = nextOccurrence.HasValue ? Math.Abs(nextOccurrence.Value.Subtract(now).TotalSeconds) : -1;
                     var trigger = nextOccurrence.HasValue && diff < 10;
-                    log.LogInformation($"{assignment.PartitionKey} {assignment.CronExpression} trigger: {trigger} , diff: {diff} seconds");
+                    _logger.LogInformation($"{assignment.PartitionKey} {assignment.CronExpression} trigger: {trigger} , diff: {diff} seconds");
                     return trigger;
                 }
                 catch (Exception)
                 {
-                    log.LogInformation($"{assignment.PartitionKey} Invalid Cron Expression {assignment.CronExpression}!");
+                    _logger.LogInformation($"{assignment.PartitionKey} Invalid Cron Expression {assignment.CronExpression}!");
                     return false;
                 }
             }
@@ -180,8 +179,8 @@ namespace AzureAutomaticGradingEngineFunctionApp
             return new ClassGradingJob() { assignment = assignment, graderUrl = graderUrl, students = students };
         }
 
-        [FunctionName(nameof(RunAndSaveTestResult))]
-        public static async Task RunAndSaveTestResult([ActivityTrigger] SingleGradingJob job, ExecutionContext context, ILogger log)
+        [Function(nameof(RunAndSaveTestResult))]
+        public async Task RunAndSaveTestResult([ActivityTrigger] SingleGradingJob job, FunctionContext context)
         {
             var container = CloudStorage.GetCloudBlobContainer(context, "testresult");
 
@@ -198,20 +197,20 @@ namespace AzureAutomaticGradingEngineFunctionApp
             try
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
-                log.LogInformation("Calling grader URL for email -> " + job.student.email);
+                _logger.LogInformation("Calling grader URL for email -> " + job.student.email);
                 var xml = await client.GetStringAsync(uri);
 
                 await CloudStorage.SaveTestResult(container, job.assignment.Name, job.student.email.ToString(), xml, job.assignment.GradeTime);
                 if (job.assignment.SendMarkEmailToStudents)
-                    EmailTestResultToStudent(context, log, job.assignment.Name, job.student.email.ToString(), xml, job.assignment.GradeTime);
+                    EmailTestResultToStudent(context, _logger, job.assignment.Name, job.student.email.ToString(), xml, job.assignment.GradeTime);
                 watch.Stop();
                 var elapsedMs = watch.ElapsedMilliseconds;
-                log.LogInformation(job.student.email + " get test result in " + elapsedMs + "ms.");
+                _logger.LogInformation(job.student.email + " get test result in " + elapsedMs + "ms.");
             }
             catch (Exception ex)
             {
-                log.LogInformation(job.student.email + " in error.");
-                log.LogInformation(ex.ToString());
+                _logger.LogInformation(job.student.email + " in error.");
+                _logger.LogInformation(ex.ToString());
             }
         }
 
@@ -219,13 +218,13 @@ namespace AzureAutomaticGradingEngineFunctionApp
         {
             var array = (
                 from key in nvc.AllKeys
-                from value in nvc.GetValues(key)
+                from value in nvc.GetValues(key)!
                 select $"{HttpUtility.UrlEncode(key)}={HttpUtility.UrlEncode(value)}"
             ).ToArray();
             return "?" + string.Join("&", array);
         }
 
-        private static void EmailTestResultToStudent(ExecutionContext context, ILogger log, string assignment, string email, string xml, DateTime gradeTime)
+        private static void EmailTestResultToStudent(FunctionContext context, ILogger log, string assignment, string email, string xml, DateTime gradeTime)
         {
             var nUnitTestResult = GradeReportFunction.ParseNUnitTestResult(xml);
             var totalMark = nUnitTestResult.Sum(c => c.Value);
@@ -255,12 +254,12 @@ Azure Automatic Grading Engine
             emailClient.Send(emailMessage, new[] { Email.StringToAttachment(xml, "TestResult.txt", "text/plain") });
         }
 
-        [FunctionName(nameof(SaveAccumulatedMarkJson))]
-        public static async Task SaveAccumulatedMarkJson([ActivityTrigger] AssignmentPoco assignment,
-            ExecutionContext executionContext,
-            ILogger log)
+        [Function(nameof(SaveAccumulatedMarkJson))]
+        public async Task SaveAccumulatedMarkJson([ActivityTrigger] AssignmentPoco assignment,
+            FunctionContext executionContext
+            )
         {
-            var accumulatedMarks = await GradeReportFunction.CalculateMarks(log, executionContext, assignment.Name, false);
+            var accumulatedMarks = await GradeReportFunction.CalculateMarks(_logger, executionContext, assignment.Name, false);
             var blobName = string.Format(CultureInfo.InvariantCulture, assignment.Name + "/{0:yyyy/MM/dd/HH/mm}/accumulatedMarks.json", assignment.GradeTime);
             await CloudStorage.SaveJsonReport(executionContext, blobName, accumulatedMarks);
             blobName = assignment.Name + "/accumulatedMarks.json";
@@ -290,7 +289,7 @@ Azure Automatic Grading Engine
                 };
 
                 var config = new Config(executionContext);
-                var email = new Email(config, log);
+                var email = new Email(config, _logger);
                 workbookMemoryStream = new MemoryStream(workbookMemoryStream.ToArray());
                 var excelAttachment = new Attachment(workbookMemoryStream, "accumulatedMarks.xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

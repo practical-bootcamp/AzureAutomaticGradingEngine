@@ -1,24 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net8.0</TargetFramework>
 		<AzureFunctionsVersion>v4</AzureFunctionsVersion>
-		<UserSecretsId>ffc469c3-dde5-4eb8-a9f2-b4f6484bfb3c</UserSecretsId>
-		<ApplicationInsightsResourceId>/subscriptions/183966e3-8333-4764-9c74-a0eb4f883571/resourceGroups/azureautomaticgradingengine/providers/microsoft.insights/components/AzureAutomaticGradingEngineFunctionApp</ApplicationInsightsResourceId>
+		<OutputType>Exe</OutputType>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="ClosedXML" Version="0.102.1" />
-		<PackageReference Include="Cronos" Version="0.7.1" />
-		<PackageReference Include="Azure.Data.Tables" Version="12.8.1" />
-		<PackageReference Include="Microsoft.Azure.Management.ContainerInstance.Fluent" Version="1.38.1" />
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+		<PackageReference Include="Azure.Identity" Version="1.12.0" />
+		<PackageReference Include="ClosedXML" Version="0.102.2" />
+		<PackageReference Include="Cronos" Version="0.8.4" />
+		<PackageReference Include="Azure.Data.Tables" Version="12.8.3" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask"
+			Version="1.1.4" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer"
+			Version="4.3.1" />
+		<PackageReference Include="Microsoft.Azure.Management.ContainerInstance.Fluent"
+			Version="1.38.1" />
 		<PackageReference Include="Microsoft.Azure.Management.Fluent" Version="1.38.1" />
 		<PackageReference Include="Microsoft.Azure.Management.Msi.Fluent" Version="1.38.1" />
-		<PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.11.1" />
-		<PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="5.2.0" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
-		<PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.2" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore"
+			Version="1.2.1" />
+		<PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+		<PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights"
+			Version="1.2.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<Resource Include=".gitignore" />
+		<Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
 	</ItemGroup>
 	<ItemGroup>
 		<None Update="host.json">

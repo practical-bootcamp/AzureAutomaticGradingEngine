@@ -1,6 +1,6 @@
 import { Construct } from "constructs";
 import { App, TerraformOutput, TerraformStack } from "cdktf";
-import { AzurermProvider } from "cdktf-azure-providers/.gen/providers/azurerm/azurerm-provider";
+import { AzurermProvider } from "cdktf-azure-providers/.gen/providers/azurerm/provider";
 import { ResourceGroup } from "cdktf-azure-providers/.gen/providers/azurerm/resource-group";
 import { StorageAccount } from "cdktf-azure-providers/.gen/providers/azurerm/storage-account";
 import { StorageQueue } from "cdktf-azure-providers/.gen/providers/azurerm/storage-queue";
