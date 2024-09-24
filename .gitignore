@@ -365,3 +365,6 @@ FodyWeavers.xsd
 /AzureAutomaticGradingEngineFunctionApp/Properties/serviceDependencies.AzureAutomaticGradingEngineFunctionApp20210815094353 - Zip Deploy.json
 /AzureAutomaticGradingEngineFunctionApp/Properties/ServiceDependencies
 /AzureAutomaticGradingEngineFunctionApp/Properties/serviceDependencies.AzureAutomaticGradingEngineFunctionApp - Zip Deploy.json
+__azurite_db_*__.json
+__blobstorage__/
+__queuestorage__/

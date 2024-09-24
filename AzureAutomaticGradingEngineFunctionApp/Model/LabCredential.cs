@@ -1,12 +1,12 @@
-﻿using Azure;
-using Microsoft.WindowsAzure.Storage.Table;
+﻿using System.Runtime.Serialization;
+using Azure;
 using ITableEntity = Azure.Data.Tables.ITableEntity;
 
 namespace AzureAutomaticGradingEngineFunctionApp.Model;
 
 internal class LabCredential : ITableEntity
 {
-    public string AppId { get; set; }
+ public string AppId { get; set; }
     public string DisplayName { get; set; }
     public string Password { get; set; }
     public string Tenant { get; set; }
@@ -18,5 +18,6 @@ internal class LabCredential : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
 
-    [IgnoreProperty] public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>();
-}
+    [IgnoreDataMember] public Dictionary<string, string> Variables { get; set; } = new Dictionary<string, string>();
+
+ }

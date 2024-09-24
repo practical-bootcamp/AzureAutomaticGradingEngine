@@ -9,7 +9,7 @@
     "EmailPassword": "XAXAXAXAXAXA",
     "EmailFromAddress": "XXXX@gmail.com",
     "StorageAccountConnectionString": "",
-    "AzureWebJobsStorage": "<Fill in the Connection String>",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet"
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
   }
 }
